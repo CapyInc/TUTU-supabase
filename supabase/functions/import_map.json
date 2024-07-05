@@ -1,0 +1,7 @@
+{
+    "imports": {
+        "@paralleldrive/cuid2": "npm:@paralleldrive/cuid2@2.2.2",
+        "drizzle-orm": "npm:drizzle-orm@0.31.2",
+        "postgres": "npm:postgres@3.4.4"
+      }
+  }
