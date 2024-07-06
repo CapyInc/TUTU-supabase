@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
+import { drizzle } from 'npm:drizzle-orm@^0.31.2/postgres-js'
 import postgres from 'postgres'
 import { users } from '../_shared/schema.ts'
 
