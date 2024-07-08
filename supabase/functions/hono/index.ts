@@ -42,7 +42,7 @@ app
       const client = postgres(connectionString, { prepare: false })
       const db = drizzle(client)
 			const body = await c.req.parseBody()
-			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor } = body
+			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor, role } = body
 
 			// check first if the username already exists
 			const usernametocheck: string = username.toString()
@@ -53,7 +53,7 @@ app
 
 			const hashedPassword = await hash(password.toString(), 10)
 
-			const insertedUser = await db.insert<PgTable>(users).values({ username, password: hashedPassword, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor }).returning()
+			const insertedUser = await db.insert<PgTable>(users).values({ username, password: hashedPassword, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor, role }).returning()
 
 			if (insertedUser.length > 0) {
 				return c.json({ error: false, message: "User created successfully" })
