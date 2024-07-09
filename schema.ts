@@ -21,3 +21,15 @@ export const users = pgTable('users', {
     role: roleEnum('role'),
     dateCreated: timestamp('dateCreated').notNull().defaultNow()
 })
+
+export const orders = pgTable('orders', {
+    id: serial('id').primaryKey(),
+    mentorUsername: text('mentorUsername').notNull(),
+    userId: text('userId').notNull(),
+    timestamp: timestamp('timestamp').notNull().defaultNow(),
+    consultationType: text('consultationType').notNull(),
+    consultationDuration: text('consultationDuration').notNull(),
+    consultationFee: bigint('consultationFee', { mode: 'number' }).notNull(),
+    appFee: bigint('appFee', { mode: 'number' }).notNull(),
+    total: bigint('total', { mode: 'number' }).notNull(),
+})

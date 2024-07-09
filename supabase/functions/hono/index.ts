@@ -1,6 +1,6 @@
 import { Hono } from 'jsr:@hono/hono'
 import { drizzle } from 'npm:drizzle-orm@^0.31.2/postgres-js'
-import { users } from '../_shared/schema.ts'
+import { users, orders } from '../_shared/schema.ts'
 import postgres from 'postgres';
 import { DB_URL } from '../_shared/config.ts'
 import { PgTable } from 'npm:drizzle-orm@^0.31.2/pg-core'
@@ -25,8 +25,8 @@ app
 
   .get('user/:userId', async (c) => {
 		try {
-      const client = postgres(connectionString, { prepare: false })
-      const db = drizzle(client)
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
 			const userIdParam = c.req.param('userId')
 
 			const getUserDetails = await db.select().from(users).where(eq(users.uuid, userIdParam))
@@ -39,8 +39,8 @@ app
 
 	.post('register', async (c) => {
 		try {
-      const client = postgres(connectionString, { prepare: false })
-      const db = drizzle(client)
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
 			const body = await c.req.parseBody()
 			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor, role } = body
 
@@ -68,8 +68,8 @@ app
 
 	.post('login', async (c) => {
 		try {
-      const client = postgres(connectionString, { prepare: false })
-      const db = drizzle(client)
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
 			const body = await c.req.parseBody()
 			const { username, password } = body
 
@@ -99,8 +99,8 @@ app
 	
 	.patch('user/:userId', async (c) => {
 		try {
-      const client = postgres(connectionString, { prepare: false })
-      const db = drizzle(client)
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
 			const userIdParam: string = c.req.param('userId')
 			const body = await c.req.parseBody()
 			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan } = body
@@ -116,6 +116,90 @@ app
 			} else {
 				return c.json({ error: true, message: 'Failed to update user profiles' }, 500)
 			}
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	// get all user that is mentor
+	.get('mentors', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const mentors = await db.select({ username: users.username, mentorId: users.uuid, rating: users.rating }).from(users).where(eq(users.role, "mentor"))
+
+			return c.json({ error: false, mentors })
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	// orders
+	.post('order', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const body = await c.req.parseBody()
+			const { mentorUsername, userId, consultationType, consultationDuration } = body
+
+			const appFee = 5000
+			let consultationFee = 0
+
+			switch (consultationType) {
+				case 'Via Chat':
+					consultationFee = 5000
+					break;
+				
+				case 'Via Zoom + Chat':
+					consultationFee = 10000
+					break;
+
+				default:
+					break;
+			}
+
+			switch (consultationDuration) {
+				case '15 menit':
+					consultationFee += 2000
+					break;
+			
+				case '30 menit':
+					consultationFee += 4000
+					break;
+
+				case '1 jam':
+					consultationFee += 6000
+					break;
+
+				case '2 jam':
+					consultationFee += 8000
+					break;
+
+				default:
+					break;
+			}
+
+			const total = consultationFee + appFee
+
+			const insertOrder = await db.insert<PgTable>(orders).values({ mentorUsername, userId, consultationType, consultationDuration, appFee, consultationFee, total }).returning()
+
+			return c.json({ error: false, insertOrder })
+
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	// get orders by user
+	.get('orders/:userId', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const userIdParam: string = c.req.param('userId')
+
+			const getUserOrders = await db.select().from(orders).where(eq(orders.userId, userIdParam))
+
+			return c.json({ error: false, getUserOrders })
 		} catch (error) {
 			console.log(error)
 		}
