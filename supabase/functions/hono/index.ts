@@ -1,6 +1,6 @@
 import { Hono } from 'jsr:@hono/hono'
 import { drizzle } from 'npm:drizzle-orm@^0.31.2/postgres-js'
-import { users, orders } from '../_shared/schema.ts'
+import { users, orders, chats, messages } from '../_shared/schema.ts'
 import postgres from 'postgres';
 import { DB_URL } from '../_shared/config.ts'
 import { PgTable } from 'npm:drizzle-orm@^0.31.2/pg-core'
@@ -183,8 +183,11 @@ app
 
 			const insertOrder = await db.insert<PgTable>(orders).values({ mentorUsername, userId, consultationType, consultationDuration, appFee, consultationFee, total }).returning()
 
-			return c.json({ error: false, insertOrder })
-
+			if (insertOrder.length > 0) {
+				return c.json({ error: false, message: 'Success' })
+			} else {
+				return c.json({ error: true, message: 'Failed to place order' }, 500)
+			}
 		} catch (error) {
 			console.log(error)
 		}
@@ -200,6 +203,72 @@ app
 			const getUserOrders = await db.select().from(orders).where(eq(orders.userId, userIdParam))
 
 			return c.json({ error: false, getUserOrders })
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+
+	// create chat (dipanggil di halaman more di history pembelian)
+	.post('chats', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const body = await c.req.parseBody()
+			const { mentorUsername, mentorId, userId } = body
+
+			// check first if mentor username already inserted
+			const roomIdToCheck: string = mentorId.toString() + userId.toString()
+			const existingRoom = await db.select({ roomId: chats.chatroomId }).from(chats).where(eq(chats.chatroomId, roomIdToCheck))
+			if (existingRoom.length > 0) {
+				return c.json({message: 'chat alr created'}, 500)
+			}
+
+			const chatroomId = roomIdToCheck
+
+			const insertedchats = await db.insert<PgTable>(chats).values({ mentorUsername, mentorId, userId, chatroomId }).returning()
+
+			if (insertedchats.length > 0) {
+				return c.json({ error: false, message: "Success" })
+			} else {
+				return c.json({ error: true, message: "Failed to create chat" }, 500)
+			}
+
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	//get chats (yg dipake di page messages)
+	.get('chats/:userId', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const userIdParam: string = c.req.param('userId')
+
+			const userChats = await db.select().from(chats).where(eq(chats.userId, userIdParam))
+
+			return c.json({ error: false, message: 'Success', chats: userChats })
+
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	.post('message', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const body = await c.req.parseBody()
+			const { roomId, message } = body
+
+			const insertMessage = await db.insert<PgTable>(messages).values({ chatroomId: roomId, message }).returning()
+
+			if (insertMessage.length > 0) {
+				return c.json({ error: false, message: 'Message Inserted' })
+			} else {
+				return c.json({ error: true, message: "Failed to insert message" }, 500)
+			}
 		} catch (error) {
 			console.log(error)
 		}

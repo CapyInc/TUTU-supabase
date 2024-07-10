@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "userId" text NOT NULL;
