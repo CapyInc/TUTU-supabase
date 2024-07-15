@@ -29,8 +29,8 @@ export const orders = pgTable('orders', {
     timestamp: timestamp('timestamp').notNull().defaultNow(),
     consultationType: text('consultationType').notNull(),
     consultationDuration: text('consultationDuration').notNull(),
-    consultationFee: bigint('consultationFee', { mode: 'number' }).notNull(),
-    appFee: bigint('appFee', { mode: 'number' }).notNull(),
+    // consultationFee: bigint('consultationFee', { mode: 'number' }).notNull(),
+    // appFee: bigint('appFee', { mode: 'number' }).notNull(),
     total: bigint('total', { mode: 'number' }).notNull(),
 })
 
@@ -38,6 +38,7 @@ export const chats = pgTable('chats', {
     id: serial('id').primaryKey(),
     chatroomId: text('chatroomId').notNull(), // dibuat dari userId + mentorId
     mentorUsername: text('mentorUsername').notNull(),
+    studentUsername: text('studentUsername').notNull(),
     mentorId:text('mentorId').notNull(),
     userId: text('userId').notNull(),
     lastMsg: text('lastMsg').default('')
@@ -46,7 +47,7 @@ export const chats = pgTable('chats', {
 export const messages = pgTable('messages', {
     messageId: serial('messageId').primaryKey().notNull(),
     chatroomId: text('chatroomId').notNull(), //dibuat dari userId + mentorId
-    // userId: text('userId').notNull(),
+    senderId: text('senderId').notNull(),
     timestamp: timestamp('timestamp').notNull().defaultNow(),
     message: text('message').notNull(),
 })

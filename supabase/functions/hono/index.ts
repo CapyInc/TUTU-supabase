@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import { DB_URL } from '../_shared/config.ts'
 import { PgTable } from 'npm:drizzle-orm@^0.31.2/pg-core'
 import { compare, hash } from 'npm:bcrypt-ts@^5.0.2'
-import { eq } from 'npm:drizzle-orm@^0.31.2';
+import { and, eq, ilike } from 'npm:drizzle-orm@^0.31.2';
 
 const functionName = 'hono'
 const app = new Hono().basePath(`/${functionName}`)
@@ -128,7 +128,28 @@ app
 			const db = drizzle(client)
 			const mentors = await db.select({ username: users.username, mentorId: users.uuid, rating: users.rating }).from(users).where(eq(users.role, "mentor"))
 
-			return c.json({ error: false, mentors })
+			return c.json({ error: false, message: "Ok", result: mentors })
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	// search mentor
+	.get('mentors/search', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const username = c.req.query('username')
+
+			const search = await db
+				.select({ username: users.username, mentorId: users.uuid, rating: users.rating })
+				.from(users)
+				.where(and(eq(users.role, "mentor"), ilike(users.username, `${username}%`)))
+
+			if (search.length == 0) {
+				return c.json({ error: false, message: "Not Found" })
+			}			
+			return c.json({ error: false, message: "Ok", result: search })
 		} catch (error) {
 			console.log(error)
 		}
@@ -140,48 +161,48 @@ app
 			const client = postgres(connectionString, { prepare: false })
 			const db = drizzle(client)
 			const body = await c.req.parseBody()
-			const { mentorUsername, userId, consultationType, consultationDuration } = body
+			const { mentorUsername, userId, consultationType, consultationDuration, total } = body
 
-			const appFee = 5000
-			let consultationFee = 0
+			// const appFee = 5000
+			// let consultationFee = 0
 
-			switch (consultationType) {
-				case 'Via Chat':
-					consultationFee = 5000
-					break;
+			// switch (consultationType) {
+			// 	case 'Via Chat':
+			// 		consultationFee = 5000
+			// 		break;
 				
-				case 'Via Zoom + Chat':
-					consultationFee = 10000
-					break;
+			// 	case 'Via Zoom + Chat':
+			// 		consultationFee = 10000
+			// 		break;
 
-				default:
-					break;
-			}
+			// 	default:
+			// 		break;
+			// }
 
-			switch (consultationDuration) {
-				case '15 menit':
-					consultationFee += 2000
-					break;
+			// switch (consultationDuration) {
+			// 	case '15 menit':
+			// 		consultationFee += 2000
+			// 		break;
 			
-				case '30 menit':
-					consultationFee += 4000
-					break;
+			// 	case '30 menit':
+			// 		consultationFee += 4000
+			// 		break;
 
-				case '1 jam':
-					consultationFee += 6000
-					break;
+			// 	case '1 jam':
+			// 		consultationFee += 6000
+			// 		break;
 
-				case '2 jam':
-					consultationFee += 8000
-					break;
+			// 	case '2 jam':
+			// 		consultationFee += 8000
+			// 		break;
 
-				default:
-					break;
-			}
+			// 	default:
+			// 		break;
+			// }
 
-			const total = consultationFee + appFee
+			// const total = consultationFee + appFee
 
-			const insertOrder = await db.insert<PgTable>(orders).values({ mentorUsername, userId, consultationType, consultationDuration, appFee, consultationFee, total }).returning()
+			const insertOrder = await db.insert<PgTable>(orders).values({ mentorUsername, userId, consultationType, consultationDuration, total }).returning()
 
 			if (insertOrder.length > 0) {
 				return c.json({ error: false, message: 'Success' })
@@ -209,27 +230,27 @@ app
 	})
 
 
-	// create chat (dipanggil di halaman more di history pembelian)
+	// create chat (dipanggil di halaman more di history pembelian atau bisa juga langsung setelah melakukan pembayaran)
 	.post('chats', async (c) => {
 		try {
 			const client = postgres(connectionString, { prepare: false })
 			const db = drizzle(client)
 			const body = await c.req.parseBody()
-			const { mentorUsername, mentorId, userId } = body
+			const { studentUsername, mentorUsername, mentorId, userId } = body
 
 			// check first if mentor username already inserted
 			const roomIdToCheck: string = mentorId.toString() + userId.toString()
 			const existingRoom = await db.select({ roomId: chats.chatroomId }).from(chats).where(eq(chats.chatroomId, roomIdToCheck))
 			if (existingRoom.length > 0) {
-				return c.json({message: 'chat alr created'}, 500)
+				return c.json({ error: true, message: 'chat alr created', chatroomId: roomIdToCheck })
 			}
 
 			const chatroomId = roomIdToCheck
 
-			const insertedchats = await db.insert<PgTable>(chats).values({ mentorUsername, mentorId, userId, chatroomId }).returning()
+			const insertedchats = await db.insert<PgTable>(chats).values({ studentUsername, mentorUsername, mentorId, userId, chatroomId }).returning()
 
 			if (insertedchats.length > 0) {
-				return c.json({ error: false, message: "Success" })
+				return c.json({ error: false, message: "Success", chatroomId: insertedchats[0].chatroomId })
 			} else {
 				return c.json({ error: true, message: "Failed to create chat" }, 500)
 			}
@@ -255,14 +276,30 @@ app
 		}
 	})
 
+	// untuk mentor
+	.get('chats/mentor/:mentorId', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const mentorIdParam: string = c.req.param('mentorId')
+
+			const userChats = await db.select().from(chats).where(eq(chats.mentorId, mentorIdParam))
+
+			return c.json({ error: false, message: 'Success', chats: userChats })
+
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
 	.post('message', async (c) => {
 		try {
 			const client = postgres(connectionString, { prepare: false })
 			const db = drizzle(client)
 			const body = await c.req.parseBody()
-			const { roomId, message } = body
+			const { roomId, message, senderId } = body
 
-			const insertMessage = await db.insert<PgTable>(messages).values({ chatroomId: roomId, message }).returning()
+			const insertMessage = await db.insert<PgTable>(messages).values({ chatroomId: roomId, senderId ,message }).returning()
 
 			if (insertMessage.length > 0) {
 				return c.json({ error: false, message: 'Message Inserted' })

@@ -78,6 +78,27 @@
       "when": 1720616539735,
       "tag": "0010_magenta_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1720749954682,
+      "tag": "0011_public_weapon_omega",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1720755222412,
+      "tag": "0012_vengeful_gambit",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1721010418810,
+      "tag": "0013_nice_nebula",
+      "breakpoints": true
     }
   ]
 }
