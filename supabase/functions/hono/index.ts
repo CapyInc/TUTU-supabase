@@ -42,7 +42,7 @@ app
 			const client = postgres(connectionString, { prepare: false })
 			const db = drizzle(client)
 			const body = await c.req.parseBody()
-			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor, role } = body
+			const { username, password, birthDatePlace, email, phoneNumber, jenjangPendidikan, role } = body
 
 			// check first if the username already exists
 			const usernametocheck: string = username.toString()
@@ -53,7 +53,7 @@ app
 
 			const hashedPassword = await hash(password.toString(), 10)
 
-			const insertedUser = await db.insert<PgTable>(users).values({ username, password: hashedPassword, birthDatePlace, email, phoneNumber, jenjangPendidikan, isMentor, role }).returning()
+			const insertedUser = await db.insert<PgTable>(users).values({ username, password: hashedPassword, birthDatePlace, email, phoneNumber, jenjangPendidikan, role }).returning()
 
 			if (insertedUser.length > 0) {
 				return c.json({ error: false, message: "User created successfully" })
@@ -121,12 +121,44 @@ app
 		}
 	})
 
+	// to update userIsChecked
+	.patch('mentor/:mentorId', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const mentorIdParam: string = c.req.param('mentorId')
+
+			const updatedMentor = await db.update<PgTable>(users).set({ accountIsChecked: true }).where(eq(users.uuid, mentorIdParam)).returning()
+			
+			if (updatedMentor.length > 0) {
+				return c.json({ error: false, message: 'Success' })
+			} else {
+				return c.json({ error: true, message: 'Failed to update' }, 500)
+			}
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
 	// get all user that is mentor
 	.get('mentors', async (c) => {
 		try {
 			const client = postgres(connectionString, { prepare: false })
 			const db = drizzle(client)
 			const mentors = await db.select({ username: users.username, mentorId: users.uuid, rating: users.rating }).from(users).where(eq(users.role, "mentor"))
+
+			return c.json({ error: false, message: "Ok", result: mentors })
+		} catch (error) {
+			console.log(error)
+		}
+	})
+
+	// get all mentors to check
+	.get('mentors_to_check', async (c) => {
+		try {
+			const client = postgres(connectionString, { prepare: false })
+			const db = drizzle(client)
+			const mentors = await db.select({ username: users.username, mentorId: users.uuid }).from(users).where(and(eq(users.role, "mentor"), eq(users.accountIsChecked, false)))
 
 			return c.json({ error: false, message: "Ok", result: mentors })
 		} catch (error) {
